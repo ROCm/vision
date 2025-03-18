@@ -38,7 +38,7 @@ else
   pushd ext_libraries
   popd
   export PATH="$(pwd)/ext_libraries/bin:$PATH"
-  pip install auditwheel
+  pip install "auditwheel<6.3.0"
 
   # Point to custom libraries
   export LD_LIBRARY_PATH=$(pwd)/ext_libraries/lib:$LD_LIBRARY_PATH
