@@ -847,6 +847,16 @@ def test_gaussian_blur(device, channels, meth_kwargs):
     ):
         pytest.skip("Fails on Windows, see https://github.com/pytorch/vision/issues/5464")
 
+    if all(
+        [
+            device == "cuda",
+            torch.version.hip is not None,
+            "gfx90a" in torch.cuda.get_device_properties().gcnArchName,
+            "test_gaussian_blur[3-meth_kwargs4-cuda]" in os.environ.get("PYTEST_CURRENT_TEST")
+        ]
+    ):
+        pytest.skip("Skipped on gfx90a because of uint8 rounding difference for batched and single conv2d (ROCM-19786)")
+
     tol = 1.0 + 1e-10
     torch.manual_seed(12)
     _test_class_op(
