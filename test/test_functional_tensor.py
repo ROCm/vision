@@ -1009,15 +1009,23 @@ def test_crop(device, top, left, height, width):
 @pytest.mark.parametrize("fn", [F.gaussian_blur, torch.jit.script(F.gaussian_blur)])
 def test_gaussian_blur(device, image_size, dt, ksize, sigma, fn):
 
+    atol = 1.0
+    current_test = os.environ.get("PYTEST_CURRENT_TEST", "")
+    rocm_relaxed_atol_tests = (
+        "[gaussian_blur-sigma3-ksize2-dt3-large-cuda]",
+        "[ScriptFunction-sigma3-ksize2-dt3-large-cuda]",
+        "[gaussian_blur-sigma2-ksize1-dt3-small-cuda]",
+        "[ScriptFunction-sigma2-ksize1-dt3-small-cuda]",
+    )
     if all(
-    [
-        device == "cuda",
-        torch.version.hip is not None,
-        "gfx90a" in torch.cuda.get_device_properties().gcnArchName,
-        "[gaussian_blur-sigma3-ksize2-dt3-large-cuda]" in os.environ.get("PYTEST_CURRENT_TEST")
-    ]
+        [
+            device == "cuda",
+            torch.version.hip is not None,
+            any(test_id in current_test for test_id in rocm_relaxed_atol_tests),
+        ]
     ):
-        pytest.skip("Skipped on gfx90a because float16 gaussian_blur differs from stored OpenCV reference by more then atol+ULP (ROCM-19786)")
+        # ROCm float16 gaussian_blur can differ from the OpenCV reference by more than atol+ULP (ROCM-19786)
+        atol = 1.125
 
     # true_cv2_results = {
     #     # np_img = np.arange(3 * 10 * 12, dtype="uint8").reshape((10, 12, 3))
@@ -1063,7 +1071,7 @@ def test_gaussian_blur(device, image_size, dt, ksize, sigma, fn):
     )
 
     out = fn(tensor, kernel_size=ksize, sigma=sigma)
-    torch.testing.assert_close(out, true_out, rtol=0.0, atol=1.0, msg=f"{ksize}, {sigma}")
+    torch.testing.assert_close(out, true_out, rtol=0.0, atol=atol, msg=f"{ksize}, {sigma}")
 
 
 @pytest.mark.parametrize("device", cpu_and_cuda())
