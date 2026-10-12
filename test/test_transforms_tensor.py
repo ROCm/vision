@@ -847,6 +847,24 @@ def test_gaussian_blur(device, channels, meth_kwargs):
     ):
         pytest.skip("Fails on Windows, see https://github.com/pytorch/vision/issues/5464")
 
+    # torch.version.rocm is the ROCm release, e.g. "10.1.0" -> (10, 1).
+    rocm_ver = (
+        tuple(int(v) for v in torch.version.rocm.split(".")[:2])
+        if torch.version.rocm is not None
+        else (0, 0)
+    )
+    if (
+        device == "cuda"
+        and channels == 3
+        and meth_kwargs == {"kernel_size": (3, 3), "sigma": (0.1, 2.0)}
+        and rocm_ver == (10, 1)
+        and "gfx90a" in torch.cuda.get_device_properties().gcnArchName
+    ):
+        pytest.skip(
+            "Skipped on gfx90a ROCm 10.1 because of uint8 rounding difference "
+            "for batched and single conv2d (ROCM-31788)"
+        )
+
     tol = 1.0 + 1e-10
     torch.manual_seed(12)
     _test_class_op(
